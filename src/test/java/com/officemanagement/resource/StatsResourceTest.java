@@ -8,7 +8,7 @@ import io.restassured.http.ContentType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import jakarta.ws.rs.core.Response;
+import javax.ws.rs.core.Response;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
@@ -50,13 +50,14 @@ public class StatsResourceTest extends BaseResourceTest {
     }
 
     private void createTestEmployee(String fullName, String occupation) {
-        Employee employee = new Employee();
-        employee.setFullName(fullName);
-        employee.setOccupation(occupation);
+        String employeeJson = String.format(
+            "{\"fullName\": \"%s\", \"occupation\": \"%s\", \"seats\": []}",
+            fullName, occupation
+        );
 
         given()
             .contentType(ContentType.JSON)
-            .body(employee)
+            .body(employeeJson)
         .when()
             .post(getApiPath("/employees"))
         .then()

@@ -4,9 +4,9 @@
 
 - Java 11
 - Hibernate 6.2.7
-- RESTEasy 6.2.7
+- RESTEasy 3.15.3 (Jakarta EE 8)
 - Undertow 2.3.10
-- WildFly Application Server
+- WildFly 26.1.3.Final
 - PostgreSQL
 - HikariCP
 - Maven
@@ -100,3 +100,37 @@ Tests use an in-memory H2 database and don't require any additional configuratio
 
 ```bash
 ./mvnw test
+```
+
+## Port Configuration
+
+WildFly requires the following ports to be available:
+- 8080: HTTP port for web applications
+- 8443: HTTPS port for secure web applications
+- 9990: Management interface port
+
+If you encounter "Address already in use" errors, you can:
+
+1. Check if any process is using these ports:
+   ```bash
+   lsof -i :8080
+   lsof -i :8443
+   lsof -i :9990
+   ```
+
+2. Stop the processes using these ports:
+   ```bash
+   kill $(lsof -t -i :8080)
+   kill $(lsof -t -i :8443)
+   kill $(lsof -t -i :9990)
+   ```
+
+3. Alternatively, you can configure WildFly to use different ports by editing `standalone.xml`:
+   ```bash
+   target/server/standalone/configuration/standalone.xml
+   ```
+   
+   Update the following elements:
+   - `<socket-binding name="http" port="${jboss.http.port:8080}"/>`
+   - `<socket-binding name="https" port="${jboss.https.port:8443}"/>`
+   - `<socket-binding name="management-http" port="${jboss.management.http.port:9990}"/>`

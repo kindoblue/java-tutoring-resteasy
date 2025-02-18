@@ -2,14 +2,15 @@ package com.officemanagement.resource;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.fasterxml.jackson.jakarta.rs.json.JacksonJsonProvider;
+import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
 import com.officemanagement.config.RestEasyConfig;
 import com.officemanagement.util.HibernateUtil;
 import io.restassured.RestAssured;
 import io.restassured.config.ObjectMapperConfig;
 import io.restassured.config.RestAssuredConfig;
 import io.undertow.Undertow;
-import org.jboss.resteasy.core.ResteasyDeploymentImpl;
+import io.undertow.servlet.api.DeploymentInfo;
+import org.jboss.resteasy.spi.ResteasyDeployment;
 import org.jboss.resteasy.plugins.server.undertow.UndertowJaxrsServer;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -24,15 +25,19 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import javax.servlet.ServletException;
+import io.undertow.server.HttpHandler;
+import io.undertow.servlet.Servlets;
+import io.undertow.servlet.api.DeploymentManager;
+import java.util.List;
 
-import jakarta.ws.rs.ApplicationPath;
-import jakarta.ws.rs.core.Application;
+import javax.ws.rs.ApplicationPath;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
 @ExtendWith(MockitoExtension.class)
 @Execution(ExecutionMode.SAME_THREAD)
-@ApplicationPath("/api")
 public abstract class BaseResourceTest {
+    
     private static final Logger logger = LoggerFactory.getLogger(BaseResourceTest.class);
     private static final Object LOCK = new Object();
     private static volatile boolean initialized = false;
@@ -40,74 +45,80 @@ public abstract class BaseResourceTest {
     protected static SessionFactory sessionFactory;
     protected Session session;
     protected Transaction transaction;
-    protected static UndertowJaxrsServer server;
+    protected static Undertow server;
     private static final ThreadLocal<Session> threadLocalSession = new ThreadLocal<>();
+    protected static final int PORT = 8081;
+    protected static final String CONTEXT_PATH = "/officemanagement";
+    protected static DeploymentInfo deploymentInfo;
 
     @BeforeAll
-    public static void setupClass() {
+    public static void setupClass() throws ServletException {
         synchronized (LOCK) {
             if (!initialized) {
-            try {
-                logger.info("Starting test server setup...");
-                
-                // Configure ObjectMapper
-                objectMapper = new ObjectMapper();
-                objectMapper.registerModule(new JavaTimeModule());
-                objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
-                objectMapper.configure(SerializationFeature.WRITE_DATE_TIMESTAMPS_AS_NANOSECONDS, false);
-                logger.info("Configured ObjectMapper");
-                
-                // Initialize Hibernate SessionFactory
-                sessionFactory = HibernateUtil.getSessionFactory();
-                logger.info("Initialized Hibernate SessionFactory");
-
-                // Start the server
-                server = new UndertowJaxrsServer();
-                server.start(Undertow.builder().addHttpListener(8081, "localhost"));
-
-                // Create deployment
-                ResteasyDeploymentImpl deployment = new ResteasyDeploymentImpl();
-                deployment.setApplication(new RestEasyConfig());
-                
-                // Register providers
-                JacksonJsonProvider jsonProvider = new JacksonJsonProvider(objectMapper);
-                deployment.getProviders().add(jsonProvider);
-
-                // Deploy the application
-                server.deploy(deployment);
-                logger.info("Deployed RESTEasy application");
-                
-                // Configure RestAssured
-                RestAssured.baseURI = "http://localhost:8081";
-                RestAssured.config = RestAssuredConfig.config().objectMapperConfig(
-                    ObjectMapperConfig.objectMapperConfig().jackson2ObjectMapperFactory(
-                        (type, s) -> {
-                            ObjectMapper clientMapper = new ObjectMapper();
-                            clientMapper.registerModule(new JavaTimeModule());
-                            clientMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
-                            clientMapper.configure(SerializationFeature.WRITE_DATE_TIMESTAMPS_AS_NANOSECONDS, false);
-                            return clientMapper;
-                        }
-                    )
-                );
-                logger.info("Configured RestAssured");
-                
-                initialized = true;
-                logger.info("Test server setup completed successfully");
-            } catch (Exception e) {
-                logger.error("Failed to start test server", e);
-                if (server != null) {
-                    server.stop();
+                try {
+                    // Initialize Hibernate
+                    HibernateUtil.setTestEnvironment(true);
+                    sessionFactory = HibernateUtil.getSessionFactory(); // Force initialization
+                    
+                    // Create deployment info
+                    deploymentInfo = Servlets.deployment()
+                        .setClassLoader(BaseResourceTest.class.getClassLoader())
+                        .setContextPath(CONTEXT_PATH)
+                        .setDeploymentName("office-management-test")
+                        .addServletContextAttribute(ResteasyDeployment.class.getName(), createDeployment());
+                        
+                    DeploymentManager manager = Servlets.defaultContainer().addDeployment(deploymentInfo);
+                    manager.deploy();
+                    
+                    HttpHandler httpHandler = manager.start();
+                    
+                    // Start Undertow server
+                    server = Undertow.builder()
+                        .addHttpListener(PORT, "localhost")
+                        .setHandler(httpHandler)
+                        .build();
+                    server.start();
+                    
+                    // Configure RestAssured
+                    RestAssured.baseURI = "http://localhost";
+                    RestAssured.port = PORT;
+                    RestAssured.basePath = "/officemanagement/api";
+                    
+                    initialized = true;
+                    logger.info("Test server initialized successfully");
+                } catch (Exception e) {
+                    logger.error("Failed to initialize test server", e);
+                    throw e;
                 }
-                if (sessionFactory != null) {
-                    sessionFactory.close();
-                    sessionFactory = null;
-                }
-                initialized = false;
-                throw new RuntimeException("Failed to start test server", e);
-            }
             }
         }
+    }
+    
+    private static ResteasyDeployment createDeployment() {
+        ResteasyDeployment deployment = new ResteasyDeployment();
+        
+        // Don't set application class, instead register resources directly
+        deployment.setResources(List.of(
+            new SeatResource(),
+            new EmployeeResource(),
+            new FloorResource(),
+            new RoomResource(),
+            new StatsResource()
+        ));
+        
+        // Register providers
+        deployment.setProviderClasses(List.of(
+            JacksonJsonProvider.class.getName()
+        ));
+        
+        // Configure Jackson
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+        mapper.configure(SerializationFeature.WRITE_DATE_TIMESTAMPS_AS_NANOSECONDS, false);
+        deployment.setProviders(List.of(new JacksonJsonProvider(mapper)));
+        
+        return deployment;
     }
 
     @AfterAll
@@ -120,7 +131,6 @@ public abstract class BaseResourceTest {
                     server = null;
                     logger.info("Stopped Undertow server");
                 }
-                // Do not close SessionFactory here as it's shared between test classes
                 initialized = false;
                 logger.info("Test server teardown completed successfully");
             } catch (Exception e) {
@@ -131,34 +141,11 @@ public abstract class BaseResourceTest {
     }
 
     @BeforeEach
-    public void setup() throws Exception {
+    public void setupTest() throws Exception {
         synchronized (LOCK) {
-            // Ensure we have a valid server
-            if (server == null || !initialized) {
-                logger.warn("Server not initialized, running setup again...");
-                setupClass();
-            }
-
-            if (sessionFactory == null) {
-                logger.warn("SessionFactory is null, reinitializing...");
-                sessionFactory = HibernateUtil.getSessionFactory();
-            }
-            
-            RestAssured.basePath = "/api";
-            RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
-            
-            // Close any existing session for this thread
-            Session existingSession = threadLocalSession.get();
-            if (existingSession != null && existingSession.isOpen()) {
-                existingSession.close();
-            }
-            
-            // Start a new session and transaction
+            // Get fresh session for each test
             session = sessionFactory.openSession();
-            threadLocalSession.set(session);
             transaction = session.beginTransaction();
-
-            // Clean the database before each test
             cleanDatabase();
         }
     }
@@ -166,23 +153,71 @@ public abstract class BaseResourceTest {
     private void cleanDatabase() {
         try {
             logger.info("Cleaning database...");
-            // Disable foreign key checks temporarily
-            session.createNativeQuery("SET REFERENTIAL_INTEGRITY FALSE").executeUpdate();
             
-            // Truncate all tables
-            session.createNativeQuery("TRUNCATE TABLE seats").executeUpdate();
-            session.createNativeQuery("TRUNCATE TABLE employees").executeUpdate();
-            session.createNativeQuery("TRUNCATE TABLE office_rooms").executeUpdate();
-            session.createNativeQuery("TRUNCATE TABLE floors").executeUpdate();
+            // Use database-agnostic approach to clean tables
+            String[] tables = {"seats", "employees", "office_rooms", "floors"};
             
-            // Reset sequences
-            session.createNativeQuery("ALTER SEQUENCE seat_seq RESTART WITH 1").executeUpdate();
-            session.createNativeQuery("ALTER SEQUENCE employee_seq RESTART WITH 1").executeUpdate();
-            session.createNativeQuery("ALTER SEQUENCE office_room_seq RESTART WITH 1").executeUpdate();
-            session.createNativeQuery("ALTER SEQUENCE floor_seq RESTART WITH 1").executeUpdate();
+            // First disable foreign key constraints if possible
+            try {
+                // Try H2 syntax
+                session.createNativeQuery("SET REFERENTIAL_INTEGRITY FALSE").executeUpdate();
+            } catch (Exception e) {
+                try {
+                    // Try PostgreSQL syntax
+                    tables = new String[]{"seats", "employees", "office_rooms", "floors"};
+                    for (String table : tables) {
+                        session.createNativeQuery("ALTER TABLE " + table + " DISABLE TRIGGER ALL").executeUpdate();
+                    }
+                } catch (Exception ex) {
+                    logger.warn("Could not disable constraints, will try to delete in order: {}", ex.getMessage());
+                }
+            }
             
-            // Re-enable foreign key checks
-            session.createNativeQuery("SET REFERENTIAL_INTEGRITY TRUE").executeUpdate();
+            // Delete from tables in reverse order of dependencies
+            for (String table : tables) {
+                try {
+                    session.createNativeQuery("DELETE FROM " + table).executeUpdate();
+                } catch (Exception e) {
+                    logger.error("Error cleaning table {}: {}", table, e.getMessage());
+                }
+            }
+            
+            // Try to reset sequences in a database-agnostic way
+            String[][] sequences = {
+                {"seat_seq", "seats"}, 
+                {"employee_seq", "employees"},
+                {"office_room_seq", "office_rooms"}, 
+                {"floor_seq", "floors"}
+            };
+            
+            for (String[] sequence : sequences) {
+                try {
+                    // Try H2 syntax
+                    session.createNativeQuery("ALTER SEQUENCE " + sequence[0] + " RESTART WITH 1").executeUpdate();
+                } catch (Exception e) {
+                    try {
+                        // Try PostgreSQL syntax
+                        session.createNativeQuery("SELECT setval('" + sequence[0] + "', 1, false)").executeUpdate();
+                    } catch (Exception ex) {
+                        logger.warn("Could not reset sequence {}: {}", sequence[0], ex.getMessage());
+                    }
+                }
+            }
+            
+            // Re-enable foreign key constraints
+            try {
+                // Try H2 syntax
+                session.createNativeQuery("SET REFERENTIAL_INTEGRITY TRUE").executeUpdate();
+            } catch (Exception e) {
+                try {
+                    // Try PostgreSQL syntax
+                    for (String table : tables) {
+                        session.createNativeQuery("ALTER TABLE " + table + " ENABLE TRIGGER ALL").executeUpdate();
+                    }
+                } catch (Exception ex) {
+                    logger.warn("Could not re-enable constraints: {}", ex.getMessage());
+                }
+            }
             
             // Commit the changes
             transaction.commit();
@@ -190,29 +225,25 @@ public abstract class BaseResourceTest {
             logger.info("Database cleaned successfully");
         } catch (Exception e) {
             logger.error("Failed to clean database", e);
+            if (transaction != null && transaction.isActive()) {
+                transaction.rollback();
+            }
             throw e;
         }
     }
 
     @AfterEach
-    public void cleanup() throws Exception {
+    public void cleanup() {
         try {
-            if (transaction != null && transaction.isActive()) {
-                try {
-                    transaction.commit();
-                } catch (Exception e) {
-                    logger.error("Failed to commit transaction", e);
-                    if (transaction.isActive()) {
-                        transaction.rollback();
-                    }
-                    throw e;
+            if (session != null && session.isOpen()) {
+                if (transaction != null && transaction.isActive()) {
+                    transaction.rollback();
                 }
+                session.close();
             }
+        } catch (Exception e) {
+            logger.error("Error during cleanup", e);
         } finally {
-            Session currentSession = threadLocalSession.get();
-            if (currentSession != null && currentSession.isOpen()) {
-                currentSession.close();
-            }
             threadLocalSession.remove();
             transaction = null;
             session = null;
@@ -225,8 +256,12 @@ public abstract class BaseResourceTest {
     }
 
     protected void commitAndStartNewTransaction() {
-        transaction.commit();
-        transaction = session.beginTransaction();
+        if (session != null && session.isOpen()) {
+            if (session.getTransaction().isActive()) {
+                session.getTransaction().commit();
+            }
+            session.beginTransaction();
+        }
     }
 
     protected String getApiPath(String path) {

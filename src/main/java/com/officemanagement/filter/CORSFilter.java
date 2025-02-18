@@ -1,9 +1,13 @@
 package com.officemanagement.filter;
 
-import jakarta.servlet.*;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
+import javax.servlet.Filter;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.FilterChain;
+import javax.servlet.FilterConfig;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
 
 public class CORSFilter implements Filter {
 
@@ -13,18 +17,18 @@ public class CORSFilter implements Filter {
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
-            throws IOException, ServletException {
+            throws java.io.IOException, ServletException {
         HttpServletResponse httpResponse = (HttpServletResponse) response;
         HttpServletRequest httpRequest = (HttpServletRequest) request;
 
-        httpResponse.setHeader("Access-Control-Allow-Origin", "http://localhost:4200");
+        httpResponse.setHeader("Access-Control-Allow-Origin", "*");
         httpResponse.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-        httpResponse.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-        httpResponse.setHeader("Access-Control-Allow-Credentials", "true");
+        httpResponse.setHeader("Access-Control-Max-Age", "3600");
+        httpResponse.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
 
-        // Handle preflight requests
+        // For HTTP OPTIONS verb/method reply with ACCEPTED status code -- per CORS handshake
         if (httpRequest.getMethod().equals("OPTIONS")) {
-            httpResponse.setStatus(HttpServletResponse.SC_OK);
+            httpResponse.setStatus(HttpServletResponse.SC_ACCEPTED);
             return;
         }
 

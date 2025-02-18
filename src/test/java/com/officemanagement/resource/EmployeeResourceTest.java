@@ -7,7 +7,7 @@ import com.officemanagement.model.Seat;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.Test;
 
-import jakarta.ws.rs.core.Response;
+import javax.ws.rs.core.Response;
 import java.time.LocalDateTime;
 
 import static io.restassured.RestAssured.given;

@@ -2,42 +2,47 @@ package com.officemanagement.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.fasterxml.jackson.jakarta.rs.json.JacksonJsonProvider;
-import jakarta.ws.rs.ApplicationPath;
-import jakarta.ws.rs.core.Application;
+import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
+import javax.ws.rs.ApplicationPath;
+import javax.ws.rs.core.Application;
 import java.util.HashSet;
 import java.util.Set;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.officemanagement.resource.*;
 
 @ApplicationPath("/api")
 public class RestEasyConfig extends Application {
     
     @Override
-    public Set<Object> getSingletons() {
-        Set<Object> singletons = new HashSet<>();
+    public Set<Class<?>> getClasses() {
+        Set<Class<?>> classes = new HashSet<>();
         
-        // Configure JSON serialization with JavaTimeModule
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.registerModule(new JavaTimeModule());
-        // Configure to write dates as ISO-8601 strings instead of timestamps
-        mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
-        mapper.configure(SerializationFeature.WRITE_DATE_TIMESTAMPS_AS_NANOSECONDS, false);
+        // Register resource classes
+        classes.add(EmployeeResource.class);
+        classes.add(SeatResource.class);
+        classes.add(FloorResource.class);
+        classes.add(RoomResource.class);
+        classes.add(StatsResource.class);
         
-        JacksonJsonProvider provider = new JacksonJsonProvider(mapper);
-        singletons.add(provider);
+        // Register providers
+        classes.add(JacksonJsonProvider.class);
         
-        return singletons;
+        return classes;
     }
 
     @Override
-    public Set<Class<?>> getClasses() {
-        Set<Class<?>> classes = new HashSet<>();
-        // Register resources package
-        classes.add(com.officemanagement.resource.EmployeeResource.class);
-        classes.add(com.officemanagement.resource.FloorResource.class);
-        classes.add(com.officemanagement.resource.RoomResource.class);
-        classes.add(com.officemanagement.resource.SeatResource.class);
-        classes.add(com.officemanagement.resource.StatsResource.class);
-        return classes;
+    public Set<Object> getSingletons() {
+        Set<Object> singletons = new HashSet<>();
+        
+        // Configure JSON serialization
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+        mapper.configure(SerializationFeature.WRITE_DATE_TIMESTAMPS_AS_NANOSECONDS, false);
+        
+        // Add configured mapper
+        singletons.add(new JacksonJsonProvider(mapper));
+        
+        return singletons;
     }
 } 

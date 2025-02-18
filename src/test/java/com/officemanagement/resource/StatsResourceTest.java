@@ -53,7 +53,6 @@ public class StatsResourceTest extends BaseResourceTest {
         Employee employee = new Employee();
         employee.setFullName(fullName);
         employee.setOccupation(occupation);
-        session.save(employee);
 
         given()
             .contentType(ContentType.JSON)
@@ -68,7 +67,6 @@ public class StatsResourceTest extends BaseResourceTest {
         Floor floor = new Floor();
         floor.setName(name);
         floor.setFloorNumber(floorNumber);
-        session.save(floor);
 
         Integer floorIdInt = given()
             .contentType(ContentType.JSON)
@@ -90,7 +88,6 @@ public class StatsResourceTest extends BaseResourceTest {
         room.setName(name);
         room.setRoomNumber(roomNumber);
         room.setFloor(floor);
-        session.save(room);
 
         Integer roomIdInt = given()
             .contentType(ContentType.JSON)
@@ -111,9 +108,7 @@ public class StatsResourceTest extends BaseResourceTest {
         Seat seat = new Seat();
         seat.setSeatNumber(seatNumber);
         seat.setRoom(room);
-        session.save(seat);
 
-        // Make the request and validate the response
         given()
             .contentType(ContentType.JSON)
             .body(seat)
@@ -122,4 +117,4 @@ public class StatsResourceTest extends BaseResourceTest {
         .then()
             .statusCode(Response.Status.CREATED.getStatusCode());
     }
-} 
+}

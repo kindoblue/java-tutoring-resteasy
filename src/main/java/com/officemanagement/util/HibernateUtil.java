@@ -11,28 +11,10 @@ import java.util.Properties;
 
 public class HibernateUtil {
     private static final Logger logger = LoggerFactory.getLogger(HibernateUtil.class);
-    private static final SessionFactory sessionFactory;
+    private static volatile SessionFactory sessionFactory;
     private static final Properties hibernateProperties = new Properties();
     private static final Properties hikariProperties = new Properties();
-
-    static {
-        try {
-            // Load properties
-            loadProperties();
-            
-            // Create configuration
-            Configuration configuration = createConfiguration();
-            
-            // Build SessionFactory
-            sessionFactory = configuration.buildSessionFactory();
-            
-            // Log successful initialization
-            logger.info("Hibernate SessionFactory initialized successfully");
-        } catch (Throwable ex) {
-            logger.error("Initial SessionFactory creation failed", ex);
-            throw new ExceptionInInitializerError(ex);
-        }
-    }
+    private static final Object LOCK = new Object();
 
     private static void loadProperties() {
         // Load Hibernate custom properties
@@ -90,19 +72,41 @@ public class HibernateUtil {
 
     public static SessionFactory getSessionFactory() {
         if (sessionFactory == null) {
-            throw new IllegalStateException("SessionFactory has not been initialized");
+            synchronized (LOCK) {
+                if (sessionFactory == null) {
+                    try {
+                        // Load properties
+                        loadProperties();
+                        
+                        // Create configuration
+                        Configuration configuration = createConfiguration();
+                        
+                        // Build SessionFactory
+                        sessionFactory = configuration.buildSessionFactory();
+                        
+                        // Log successful initialization
+                        logger.info("Hibernate SessionFactory initialized successfully");
+                    } catch (Throwable ex) {
+                        logger.error("Initial SessionFactory creation failed", ex);
+                        throw new ExceptionInInitializerError(ex);
+                    }
+                }
+            }
         }
         return sessionFactory;
     }
 
     public static void shutdown() {
-        try {
-            if (sessionFactory != null && !sessionFactory.isClosed()) {
-                logger.info("Closing Hibernate SessionFactory");
-                sessionFactory.close();
+        synchronized (LOCK) {
+            try {
+                if (sessionFactory != null && !sessionFactory.isClosed()) {
+                    logger.info("Closing Hibernate SessionFactory");
+                    sessionFactory.close();
+                    sessionFactory = null;
+                }
+            } catch (Exception e) {
+                logger.error("Error closing SessionFactory", e);
             }
-        } catch (Exception e) {
-            logger.error("Error closing SessionFactory", e);
         }
     }
 
@@ -112,4 +116,4 @@ public class HibernateUtil {
         combined.putAll(hibernateProperties); // Override with custom properties
         return combined;
     }
-} 
+}

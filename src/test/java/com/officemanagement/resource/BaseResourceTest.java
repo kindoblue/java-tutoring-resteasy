@@ -34,16 +34,19 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 @ApplicationPath("/api")
 public abstract class BaseResourceTest {
     private static final Logger logger = LoggerFactory.getLogger(BaseResourceTest.class);
-    private static boolean initialized = false;
+    private static final Object LOCK = new Object();
+    private static volatile boolean initialized = false;
     protected static ObjectMapper objectMapper;
     protected static SessionFactory sessionFactory;
     protected Session session;
     protected Transaction transaction;
     protected static UndertowJaxrsServer server;
+    private static final ThreadLocal<Session> threadLocalSession = new ThreadLocal<>();
 
     @BeforeAll
     public static void setupClass() {
-        if (!initialized) {
+        synchronized (LOCK) {
+            if (!initialized) {
             try {
                 logger.info("Starting test server setup...");
                 
@@ -96,49 +99,68 @@ public abstract class BaseResourceTest {
                 if (server != null) {
                     server.stop();
                 }
+                if (sessionFactory != null) {
+                    sessionFactory.close();
+                    sessionFactory = null;
+                }
+                initialized = false;
                 throw new RuntimeException("Failed to start test server", e);
+            }
             }
         }
     }
 
     @AfterAll
     public static void tearDownClass() {
-        try {
-            logger.info("Starting test server teardown...");
-            if (server != null) {
-                server.stop();
-                server = null;
-                logger.info("Stopped Undertow server");
+        synchronized (LOCK) {
+            try {
+                logger.info("Starting test server teardown...");
+                if (server != null) {
+                    server.stop();
+                    server = null;
+                    logger.info("Stopped Undertow server");
+                }
+                // Do not close SessionFactory here as it's shared between test classes
+                initialized = false;
+                logger.info("Test server teardown completed successfully");
+            } catch (Exception e) {
+                logger.error("Failed to stop test server", e);
+                throw new RuntimeException("Failed to stop test server", e);
             }
-            if (sessionFactory != null) {
-                sessionFactory.close();
-                sessionFactory = null;
-                logger.info("Closed Hibernate SessionFactory");
-            }
-            logger.info("Test server teardown completed successfully");
-        } catch (Exception e) {
-            logger.error("Failed to stop test server", e);
-            throw new RuntimeException("Failed to stop test server", e);
         }
     }
 
     @BeforeEach
     public void setup() throws Exception {
-        // Ensure we have a valid server
-        if (server == null || !initialized) {
-            logger.warn("Server not initialized, running setup again...");
-            setupClass();
-        }
-        
-        RestAssured.basePath = "/api";
-        RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
-        
-        // Start a new transaction
-        session = sessionFactory.openSession();
-        transaction = session.beginTransaction();
+        synchronized (LOCK) {
+            // Ensure we have a valid server
+            if (server == null || !initialized) {
+                logger.warn("Server not initialized, running setup again...");
+                setupClass();
+            }
 
-        // Clean the database before each test
-        cleanDatabase();
+            if (sessionFactory == null) {
+                logger.warn("SessionFactory is null, reinitializing...");
+                sessionFactory = HibernateUtil.getSessionFactory();
+            }
+            
+            RestAssured.basePath = "/api";
+            RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
+            
+            // Close any existing session for this thread
+            Session existingSession = threadLocalSession.get();
+            if (existingSession != null && existingSession.isOpen()) {
+                existingSession.close();
+            }
+            
+            // Start a new session and transaction
+            session = sessionFactory.openSession();
+            threadLocalSession.set(session);
+            transaction = session.beginTransaction();
+
+            // Clean the database before each test
+            cleanDatabase();
+        }
     }
 
     private void cleanDatabase() {
@@ -174,17 +196,26 @@ public abstract class BaseResourceTest {
 
     @AfterEach
     public void cleanup() throws Exception {
-        if (transaction != null && transaction.isActive()) {
-            try {
-                transaction.commit();
-            } catch (Exception e) {
-                logger.error("Failed to commit transaction", e);
-                transaction.rollback();
-                throw e;
+        try {
+            if (transaction != null && transaction.isActive()) {
+                try {
+                    transaction.commit();
+                } catch (Exception e) {
+                    logger.error("Failed to commit transaction", e);
+                    if (transaction.isActive()) {
+                        transaction.rollback();
+                    }
+                    throw e;
+                }
             }
-        }
-        if (session != null && session.isOpen()) {
-            session.close();
+        } finally {
+            Session currentSession = threadLocalSession.get();
+            if (currentSession != null && currentSession.isOpen()) {
+                currentSession.close();
+            }
+            threadLocalSession.remove();
+            transaction = null;
+            session = null;
         }
     }
 
@@ -201,4 +232,4 @@ public abstract class BaseResourceTest {
     protected String getApiPath(String path) {
         return path.startsWith("/") ? path : "/" + path;
     }
-} 
+}

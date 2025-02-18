@@ -27,14 +27,21 @@
         <property name="hibernate.current_session_context_class">thread</property>
         <property name="hibernate.transaction.jta.platform">org.hibernate.engine.transaction.jta.platform.internal.NoJtaPlatform</property>
 
-        <!-- Configure connection pool -->
-        <property name="hibernate.connection.pool_size">5</property>
-        <property name="hibernate.c3p0.min_size">5</property>
-        <property name="hibernate.c3p0.max_size">20</property>
-        <property name="hibernate.c3p0.timeout">300</property>
+        <!-- Configure HikariCP connection pool -->
+        <property name="hibernate.connection.provider_class">org.hibernate.hikaricp.internal.HikariCPConnectionProvider</property>
+        <property name="hibernate.hikari.minimumIdle">5</property>
+        <property name="hibernate.hikari.maximumPoolSize">20</property>
+        <property name="hibernate.hikari.idleTimeout">300000</property>
+        <property name="hibernate.hikari.connectionTimeout">20000</property>
 
         <!-- Disable the second-level cache -->
         <property name="hibernate.cache.provider_class">org.hibernate.cache.internal.NoCacheProvider</property>
+        
+        <!-- Enable batching -->
+        <property name="hibernate.jdbc.batch_size">50</property>
+        <property name="hibernate.order_inserts">true</property>
+        <property name="hibernate.order_updates">true</property>
+        <property name="hibernate.batch_versioned_data">true</property>
 
         <!-- Names the annotated entity classes -->
         <mapping class="com.officemanagement.model.Employee"/>
@@ -42,4 +49,4 @@
         <mapping class="com.officemanagement.model.OfficeRoom"/>
         <mapping class="com.officemanagement.model.Seat"/>
     </session-factory>
-</hibernate-configuration> 
+</hibernate-configuration>

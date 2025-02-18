@@ -28,7 +28,8 @@ A Java-based office management system that provides a RESTful API for managing o
 
 - Java 11
 - Hibernate 5.6
-- Jersey (JAX-RS) 2.34
+- RESTEasy (JAX-RS)
+- Undertow
 - PostgreSQL
 - HikariCP
 - Maven

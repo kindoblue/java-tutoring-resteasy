@@ -6,7 +6,6 @@ import io.restassured.http.ContentType;
 import org.junit.jupiter.api.Test;
 
 import javax.ws.rs.core.Response;
-import java.time.LocalDateTime;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;

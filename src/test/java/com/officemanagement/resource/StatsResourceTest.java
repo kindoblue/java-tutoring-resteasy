@@ -1,6 +1,5 @@
 package com.officemanagement.resource;
 
-import com.officemanagement.model.Employee;
 import com.officemanagement.model.Floor;
 import com.officemanagement.model.OfficeRoom;
 import com.officemanagement.model.Seat;
@@ -9,15 +8,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import javax.ws.rs.core.Response;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 
 public class StatsResourceTest extends BaseResourceTest {
-
-    private static final LocalDateTime TEST_TIMESTAMP = LocalDateTime.now(ZoneOffset.UTC);
 
     @BeforeEach
     public void setupTestData() {

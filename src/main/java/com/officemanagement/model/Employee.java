@@ -1,8 +1,5 @@
 package com.officemanagement.model;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -36,7 +33,8 @@ public class Employee {
     private Set<Seat> seats = new HashSet<>();
 
     // Constructors
-    public Employee() {}
+    public Employee() {
+    }
 
     // Getters and Setters
     public Long getId() {
@@ -80,4 +78,4 @@ public class Employee {
         seats.remove(seat);
         seat.setEmployee(null);
     }
-} 
+}

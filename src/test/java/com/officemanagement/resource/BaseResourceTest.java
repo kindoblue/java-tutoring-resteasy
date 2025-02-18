@@ -3,15 +3,11 @@ package com.officemanagement.resource;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
-import com.officemanagement.config.RestEasyConfig;
 import com.officemanagement.util.HibernateUtil;
 import io.restassured.RestAssured;
-import io.restassured.config.ObjectMapperConfig;
-import io.restassured.config.RestAssuredConfig;
 import io.undertow.Undertow;
 import io.undertow.servlet.api.DeploymentInfo;
 import org.jboss.resteasy.spi.ResteasyDeployment;
-import org.jboss.resteasy.plugins.server.undertow.UndertowJaxrsServer;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
@@ -31,7 +27,6 @@ import io.undertow.servlet.Servlets;
 import io.undertow.servlet.api.DeploymentManager;
 import java.util.List;
 
-import javax.ws.rs.ApplicationPath;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
 @ExtendWith(MockitoExtension.class)

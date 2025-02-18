@@ -63,6 +63,28 @@ Before running the application, you need to configure the WildFly datasource:
    - Configure the PostgreSQL JDBC driver
    - Create a datasource named `OfficeManagementDS`
 
+### Creating WildFly Admin User
+
+Before accessing the WildFly Admin Console, you need to create an admin user:
+
+1. After starting WildFly, run the following command:
+   ```bash
+   target/server/bin/add-user.sh -u admin -p admin123 -g admin --silent
+   ```
+   This will create an admin user with:
+   - Username: `admin`
+   - Password: `admin123`
+   - Group: `admin`
+
+2. You can now access the WildFly Admin Console at: http://localhost:9990
+   - Login with the credentials created above
+   - The admin console allows you to:
+     - Monitor server status
+     - Deploy/undeploy applications
+     - Configure data sources
+     - Manage server resources
+     - View logs
+
 ## Running the Application
 
 1. Build and deploy:

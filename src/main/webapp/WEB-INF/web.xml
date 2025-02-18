@@ -29,7 +29,7 @@
         <servlet-name>RESTEasy</servlet-name>
         <servlet-class>org.jboss.resteasy.plugins.server.servlet.HttpServletDispatcher</servlet-class>
         <init-param>
-            <param-name>javax.ws.rs.Application</param-name>
+            <param-name>jakarta.ws.rs.Application</param-name>
             <param-value>com.officemanagement.config.RestEasyConfig</param-value>
         </init-param>
         <load-on-startup>1</load-on-startup>

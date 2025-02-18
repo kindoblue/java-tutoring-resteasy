@@ -12,61 +12,11 @@ import java.util.Properties;
 public class HibernateUtil {
     private static final Logger logger = LoggerFactory.getLogger(HibernateUtil.class);
     private static volatile SessionFactory sessionFactory;
-    private static final Properties hibernateProperties = new Properties();
-    private static final Properties hikariProperties = new Properties();
     private static final Object LOCK = new Object();
-
-    private static void loadProperties() {
-        // Load Hibernate custom properties
-        loadPropertiesFromFile("hibernate-custom.properties", hibernateProperties, "custom Hibernate");
-        
-        // Load HikariCP properties
-        loadPropertiesFromFile("hikari.properties", hikariProperties, "HikariCP");
-    }
-
-    private static void loadPropertiesFromFile(String filename, Properties properties, String description) {
-        try (InputStream input = Thread.currentThread().getContextClassLoader()
-                .getResourceAsStream(filename)) {
-            if (input != null) {
-                properties.load(input);
-                logger.info("Loaded {} properties from {}", description, filename);
-                
-                // Log all properties at debug level
-                if (logger.isDebugEnabled()) {
-                    properties.forEach((key, value) -> 
-                        logger.debug("{} property: {} = {}", description, key, value));
-                }
-            } else {
-                logger.warn("{} properties file not found: {}", description, filename);
-            }
-        } catch (IOException e) {
-            logger.warn("Could not load {} properties from {}: {}", description, filename, e.getMessage());
-        }
-    }
 
     private static Configuration createConfiguration() {
         Configuration configuration = new Configuration().configure();
-        
-        // Set the connection provider class first
-        configuration.setProperty("hibernate.connection.provider_class", 
-            "org.hibernate.hikaricp.internal.HikariCPConnectionProvider");
-        
-        // Apply HikariCP properties
-        hikariProperties.forEach((key, value) -> {
-            String propertyKey = key.toString();
-            String propertyValue = value.toString();
-            configuration.setProperty(propertyKey, propertyValue);
-            logger.debug("Setting property: {} = {}", propertyKey, propertyValue);
-        });
-        
-        // Apply any custom Hibernate properties
-        hibernateProperties.forEach((key, value) -> {
-            String propertyKey = key.toString();
-            String propertyValue = value.toString();
-            configuration.setProperty(propertyKey, propertyValue);
-            logger.debug("Setting custom property: {} = {}", propertyKey, propertyValue);
-        });
-        
+        logger.debug("Created Hibernate configuration from hibernate.cfg.xml");
         return configuration;
     }
 
@@ -75,16 +25,9 @@ public class HibernateUtil {
             synchronized (LOCK) {
                 if (sessionFactory == null) {
                     try {
-                        // Load properties
-                        loadProperties();
-                        
-                        // Create configuration
+                        // Create configuration and build SessionFactory
                         Configuration configuration = createConfiguration();
-                        
-                        // Build SessionFactory
                         sessionFactory = configuration.buildSessionFactory();
-                        
-                        // Log successful initialization
                         logger.info("Hibernate SessionFactory initialized successfully");
                     } catch (Throwable ex) {
                         logger.error("Initial SessionFactory creation failed", ex);
@@ -108,12 +51,5 @@ public class HibernateUtil {
                 logger.error("Error closing SessionFactory", e);
             }
         }
-    }
-
-    public static Properties getHibernateProperties() {
-        Properties combined = new Properties();
-        combined.putAll(hikariProperties);
-        combined.putAll(hibernateProperties); // Override with custom properties
-        return combined;
     }
 }

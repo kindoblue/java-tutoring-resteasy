@@ -4,14 +4,15 @@
         "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
 <hibernate-configuration>
     <session-factory>
-        <!-- Database connection settings -->
-        <property name="hibernate.connection.driver_class">org.postgresql.Driver</property>
-        <property name="hibernate.connection.url">jdbc:postgresql://localhost:5432/office_management</property>
-        <property name="hibernate.connection.username">postgres</property>
-        <property name="hibernate.connection.password">postgres</property>
-
+        <!-- Use WildFly's datasource -->
+        <property name="hibernate.connection.datasource">java:jboss/datasources/OfficeManagementDS</property>
+        
         <!-- SQL dialect -->
         <property name="hibernate.dialect">org.hibernate.dialect.PostgreSQLDialect</property>
+        
+        <!-- Use JTA transactions -->
+        <property name="hibernate.transaction.jta.platform">org.hibernate.engine.transaction.jta.platform.internal.JBossAppServerJtaPlatform</property>
+        <property name="hibernate.transaction.coordinator_class">jta</property>
 
         <!-- Echo all executed SQL to stdout -->
         <property name="hibernate.show_sql">true</property>
@@ -26,4 +27,4 @@
         <mapping class="com.officemanagement.model.Seat"/>
         <mapping class="com.officemanagement.model.Employee"/>
     </session-factory>
-</hibernate-configuration> 
+</hibernate-configuration>

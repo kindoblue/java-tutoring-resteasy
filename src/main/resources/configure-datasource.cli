@@ -1,10 +1,16 @@
+batch
+
+# Remove any existing PostgreSQL driver and datasource if they exist
+/subsystem=datasources/jdbc-driver=postgresql:remove
+/subsystem=datasources/data-source=OfficeManagementDS:remove
+
 # Create the PostgreSQL driver module
 module add --name=org.postgresql --resources=${env.HOME}/.m2/repository/org/postgresql/postgresql/42.3.3/postgresql-42.3.3.jar --dependencies=javax.api,javax.transaction.api
 
 # Add PostgreSQL driver
 /subsystem=datasources/jdbc-driver=postgresql:add(driver-name=postgresql,driver-module-name=org.postgresql,driver-xa-datasource-class-name=org.postgresql.xa.PGXADataSource)
 
-# Create the datasource
+# Create the datasource with validation options
 data-source add \
     --name=OfficeManagementDS \
     --jndi-name=java:jboss/datasources/OfficeManagementDS \
@@ -15,4 +21,17 @@ data-source add \
     --min-pool-size=5 \
     --max-pool-size=20 \
     --blocking-timeout-wait-millis=5000 \
-    --enabled=true
+    --enabled=true \
+    --validate-on-match=true \
+    --background-validation=true \
+    --valid-connection-checker-class-name=org.jboss.jca.adapters.jdbc.extensions.postgres.PostgreSQLValidConnectionChecker \
+    --exception-sorter-class-name=org.jboss.jca.adapters.jdbc.extensions.postgres.PostgreSQLExceptionSorter
+
+# Execute the batch
+run-batch
+
+# Reload the server configuration
+reload
+
+# Test the connection
+/subsystem=datasources/data-source=OfficeManagementDS:test-connection-in-pool

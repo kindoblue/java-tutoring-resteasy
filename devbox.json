@@ -3,7 +3,8 @@
   "packages": [
     "jdk-headless@11",
     "maven@latest",
-    "postgresql@15"
+    "postgresql@15",
+    "curl@latest"
   ],
   "shell": {
     "init_hook": [

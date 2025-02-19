@@ -2,15 +2,13 @@ package com.officemanagement.resource;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.officemanagement.filter.CORSFilter;
 import com.officemanagement.util.HibernateUtil;
+import com.officemanagement.config.UnsupportedMediaTypeExceptionMapper;
 import io.restassured.RestAssured;
 import io.restassured.config.ObjectMapperConfig;
 import io.restassured.config.RestAssuredConfig;
 import io.undertow.Undertow;
-import io.undertow.servlet.api.DeploymentInfo;
 import org.jboss.resteasy.plugins.server.undertow.UndertowJaxrsServer;
-import org.jboss.resteasy.spi.ResteasyDeployment;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
@@ -53,6 +51,8 @@ public abstract class BaseResourceTest {
             classes.add(FloorResource.class);
             classes.add(RoomResource.class);
             classes.add(StatsResource.class);
+            classes.add(com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider.class);
+            classes.add(UnsupportedMediaTypeExceptionMapper.class);
             return classes;
         }
     }

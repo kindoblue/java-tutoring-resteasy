@@ -17,6 +17,7 @@
         <undertow.version>2.2.19.Final</undertow.version>
         <jboss.logging.version>3.3.2.Final</jboss.logging.version>
         <wildfly.version>26.1.3.Final</wildfly.version>
+        <postgresql.version>42.3.3</postgresql.version>
     </properties>
 
     <dependencies>
@@ -117,7 +118,7 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <version>[42.3.3,)</version>
+            <version>${postgresql.version}</version>
         </dependency>
 
         <!-- Logging -->
@@ -201,10 +202,45 @@
             <plugin>
                 <groupId>org.wildfly.plugins</groupId>
                 <artifactId>wildfly-maven-plugin</artifactId>
-                <version>4.0.0.Final</version>
+                <version>5.1.2.Final</version>
                 <configuration>
                     <version>${wildfly.version}</version>
+                    <jbossHome>${project.build.directory}/wildfly-${wildfly.version}</jbossHome>
+                    <javaOpts>
+                        <javaOpt>-Djboss.socket.binding.port-offset=100</javaOpt>
+                    </javaOpts>
+                    <startupTimeout>360</startupTimeout>
+                    <beforeDeployment>
+                        <commands>
+                            <command>module add --name=org.postgresql --resources=${settings.localRepository}/org/postgresql/postgresql/${postgresql.version}/postgresql-${postgresql.version}.jar --dependencies=javax.api,javax.transaction.api</command>
+                        </commands>
+                    </beforeDeployment>
+                    <scripts>
+                        <script>src/main/resources/configure-datasource.cli</script>
+                    </scripts>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>start-server</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>start</goal>
+                            <goal>execute-commands</goal>
+                            <goal>deploy</goal>
+                        </goals>
+                        <configuration>
+                            <stdout>true</stdout>
+                            <fork>true</fork>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>stop-server</id>
+                        <phase>post-integration-test</phase>
+                        <goals>
+                            <goal>shutdown</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

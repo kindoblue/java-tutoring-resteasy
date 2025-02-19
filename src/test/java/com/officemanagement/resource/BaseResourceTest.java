@@ -2,8 +2,6 @@ package com.officemanagement.resource;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
-import com.officemanagement.config.RestEasyConfig;
 import com.officemanagement.filter.CORSFilter;
 import com.officemanagement.util.HibernateUtil;
 import io.restassured.RestAssured;
@@ -11,6 +9,7 @@ import io.restassured.config.ObjectMapperConfig;
 import io.restassured.config.RestAssuredConfig;
 import io.undertow.Undertow;
 import io.undertow.servlet.api.DeploymentInfo;
+import org.jboss.resteasy.plugins.server.undertow.UndertowJaxrsServer;
 import org.jboss.resteasy.spi.ResteasyDeployment;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -26,21 +25,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import java.lang.reflect.Method;
-
-import javax.servlet.ServletException;
-import io.undertow.server.HttpHandler;
-import io.undertow.servlet.Servlets;
-import io.undertow.servlet.api.DeploymentManager;
-import io.undertow.servlet.api.SecurityConstraint;
-import io.undertow.servlet.api.WebResourceCollection;
-
-import java.util.List;
-import org.jboss.resteasy.plugins.server.servlet.HttpServletDispatcher;
-import javax.servlet.DispatcherType;
-import java.util.stream.Collectors;
+import javax.ws.rs.ApplicationPath;
+import javax.ws.rs.core.Application;
+import java.util.HashSet;
 import java.util.Set;
 
 @ExtendWith(MockitoExtension.class)
@@ -53,13 +40,25 @@ public abstract class BaseResourceTest {
     protected static SessionFactory sessionFactory;
     protected Session session;
     protected Transaction transaction;
-    protected static Undertow server;
+    protected static UndertowJaxrsServer server;
     protected static final int PORT = 8081;
-    protected static final String CONTEXT_PATH = "/officemanagement";
-    protected static DeploymentInfo deploymentInfo;
+
+    @ApplicationPath("/api")
+    public static class TestApplication extends Application {
+        @Override
+        public Set<Class<?>> getClasses() {
+            Set<Class<?>> classes = new HashSet<>();
+            classes.add(SeatResource.class);
+            classes.add(EmployeeResource.class);
+            classes.add(FloorResource.class);
+            classes.add(RoomResource.class);
+            classes.add(StatsResource.class);
+            return classes;
+        }
+    }
 
     @BeforeAll
-    public static void setupClass() throws ServletException {
+    public static void setupClass() {
         synchronized (LOCK) {
             if (!initialized) {
                 try {
@@ -70,54 +69,19 @@ public abstract class BaseResourceTest {
                     sessionFactory = HibernateUtil.getSessionFactory();
                     logger.info("Hibernate initialized successfully");
 
-                    // Create deployment info with explicit servlet configuration
-                    deploymentInfo = Servlets.deployment()
-                            .setClassLoader(BaseResourceTest.class.getClassLoader())
-                            .setContextPath(CONTEXT_PATH)
-                            .setDeploymentName("officemanagement.war")
-                            .addServletContextAttribute(ResteasyDeployment.class.getName(), createDeployment())
-                            .addServlets(
-                                    Servlets.servlet("Resteasy", HttpServletDispatcher.class)
-                                            .setLoadOnStartup(1)
-                                            .addMapping("/api/*")
-                                            .addInitParam("resteasy.servlet.mapping.prefix", "/api"))
-                            .addSecurityConstraint(
-                                    new SecurityConstraint()
-                                            .addWebResourceCollection(new WebResourceCollection()
-                                                    .addUrlPattern("/api/*")
-                                                    .addHttpMethod("GET")
-                                                    .addHttpMethod("POST")
-                                                    .addHttpMethod("PUT")
-                                                    .addHttpMethod("DELETE")
-                                                    .addHttpMethod("OPTIONS")))
-                            .addFilter(
-                                    Servlets.filter("CORSFilter", CORSFilter.class))
-                            .addFilterUrlMapping("CORSFilter", "/api/*", DispatcherType.REQUEST);
-
-                    logger.info(
-                            "Created deployment info - Context path: {}, Deployment name: {}, Servlet mappings: {}, Filter mappings: {}",
-                            deploymentInfo.getContextPath(),
-                            deploymentInfo.getDeploymentName(),
-                            deploymentInfo.getServlets().get("Resteasy").getMappings(),
-                            deploymentInfo.getFilterMappings().toString());
-                    DeploymentManager manager = Servlets.defaultContainer().addDeployment(deploymentInfo);
-                    manager.deploy();
-                    logger.info("Deployment completed successfully");
-
-                    HttpHandler httpHandler = manager.start();
-
-                    // Start Undertow server
-                    server = Undertow.builder()
-                            .addHttpListener(PORT, "localhost")
-                            .setHandler(httpHandler)
-                            .build();
-                    server.start();
+                    // Start Undertow JAX-RS server
+                    server = new UndertowJaxrsServer();
+                    server.start(Undertow.builder().addHttpListener(PORT, "localhost"));
+                    
+                    // Deploy application
+                    server.deploy(TestApplication.class);
+                    
                     logger.info("Undertow server started on port: {}", PORT);
 
                     // Configure RestAssured
                     RestAssured.baseURI = "http://localhost";
                     RestAssured.port = PORT;
-                    RestAssured.basePath = "/officemanagement/api";
+                    RestAssured.basePath = "/api";
                     RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
 
                     RestAssured.config = RestAssuredConfig.config()
@@ -139,59 +103,6 @@ public abstract class BaseResourceTest {
                 }
             }
         }
-    }
-
-    private static ResteasyDeployment createDeployment() {
-        ResteasyDeployment deployment = new ResteasyDeployment();
-        
-        // Set the Application class that has @ApplicationPath
-        deployment.setApplicationClass(RestEasyConfig.class.getName());
-
-        // Register resource instances
-        List<Object> resources = List.of(
-                new SeatResource(),
-                new EmployeeResource(),
-                new FloorResource(),
-                new RoomResource(),
-                new StatsResource());
-
-        // Log registered resources
-        logger.info("Registering REST resources:");
-        resources.forEach(resource -> logger.info("  - {} with path: {}",
-                resource.getClass().getSimpleName(),
-                resource.getClass().getAnnotation(Path.class).value()));
-
-        for (Object resource : resources) {
-            Class<?> resourceClass = resource.getClass();
-            Path pathAnnotation = resourceClass.getAnnotation(Path.class);
-            String pathValue = (pathAnnotation != null) ? pathAnnotation.value() : "NO PATH ANNOTATION";
-            System.out.println("  - " + resourceClass.getName() + " with path: " + pathValue);
-
-            // **NEW: Check for @POST method in SeatResource**
-            if (resourceClass.equals(SeatResource.class)) {
-                boolean foundPost = false;
-                for (Method method : resourceClass.getMethods()) {
-                    if (method.isAnnotationPresent(POST.class)) {
-                        System.out.println("    - Found @POST method: " + method.getName());
-                        foundPost = true;
-                    }
-                }
-                if (!foundPost) {
-                    System.err.println("    - ERROR: SeatResource does NOT have a @POST method!"); // CRITICAL ERROR
-                }
-            }
-        }
-
-        deployment.setResources(resources);
-
-        // Configure and register JSON provider
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.registerModule(new JavaTimeModule());
-        JacksonJsonProvider provider = new JacksonJsonProvider(mapper);
-        deployment.setProviders(List.of(provider));
-        logger.info("Registered JacksonJsonProvider for JSON handling");
-
-        return deployment;
     }
 
     @BeforeEach

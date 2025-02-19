@@ -8,10 +8,7 @@
 
     <!-- Application Loggers -->
     <logger name="com.officemanagement" level="INFO" />
-    
-    <!-- HikariCP Logging -->
-    <logger name="com.zaxxer.hikari" level="INFO" />
-    
+        
     <!-- Hibernate Logging -->
     <logger name="org.hibernate" level="WARN" />
     <logger name="org.hibernate.SQL" level="DEBUG" />

@@ -95,25 +95,25 @@ public class SeatResourceTest extends BaseResourceTest {
         
         commitAndStartNewTransaction();
 
-        // Create first seat
+        // Create and POST first seat
         Seat seat1 = new Seat();
         seat1.setSeatNumber("101-1");
         seat1.setRoom(room);
-        session.save(seat1);
 
         given()
+            .log().all()
             .contentType(ContentType.JSON)
             .body(seat1)
         .when()
             .post(getApiPath("/seats"))
         .then()
+             .log().all()
             .statusCode(Response.Status.CREATED.getStatusCode());
 
         // Try to create another seat with same number in same room
         Seat seat2 = new Seat();
         seat2.setSeatNumber("101-1");  // Same seat number
         seat2.setRoom(room);
-        session.save(seat2);
 
         given()
             .contentType(ContentType.JSON)
@@ -189,4 +189,4 @@ public class SeatResourceTest extends BaseResourceTest {
         .then()
             .statusCode(Response.Status.NOT_FOUND.getStatusCode());
     }
-} 
+}

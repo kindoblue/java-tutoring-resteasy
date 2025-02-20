@@ -206,7 +206,7 @@
                 <artifactId>maven-war-plugin</artifactId>
                 <version>3.3.2</version>
                 <configuration>
-                    <warName>ROOT</warName>
+                    <outputFileName>ROOT.war</outputFileName>
                 </configuration>
             </plugin>
             <plugin>

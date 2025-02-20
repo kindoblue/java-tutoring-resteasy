@@ -12,13 +12,23 @@ import javax.persistence.OneToMany;
 import javax.persistence.FetchType;
 import java.util.HashSet;
 import java.util.Set;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Parameter;
 
 @Entity
 @Table(name = "floors")
 public class Floor {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "floor_seq")
-    @SequenceGenerator(name = "floor_seq", sequenceName = "floor_seq", allocationSize = 1)
+    @GenericGenerator(
+        name = "floor_seq",
+        strategy = "org.hibernate.id.enhanced.SequenceStyleGenerator",
+        parameters = {
+            @Parameter(name = "sequence_name", value = "floor_seq"),
+            @Parameter(name = "initial_value", value = "1"),
+            @Parameter(name = "increment_size", value = "1")
+        }
+    )
     @Column(name = "id", nullable = false, updatable = false)
     private Long id;
 

@@ -122,13 +122,13 @@ public abstract class BaseResourceTest {
             // Disable foreign key checks
             session.createNativeQuery("SET REFERENTIAL_INTEGRITY FALSE").executeUpdate();
 
-            // Clean tables
+            // Clean tables in correct order (respecting foreign key constraints)
             session.createNativeQuery("DELETE FROM seats").executeUpdate();
             session.createNativeQuery("DELETE FROM employees").executeUpdate();
             session.createNativeQuery("DELETE FROM office_rooms").executeUpdate();
             session.createNativeQuery("DELETE FROM floors").executeUpdate();
 
-            // Reset sequences
+            // Reset sequences in the same order
             session.createNativeQuery("ALTER SEQUENCE seat_seq RESTART WITH 1").executeUpdate();
             session.createNativeQuery("ALTER SEQUENCE employee_seq RESTART WITH 1").executeUpdate();
             session.createNativeQuery("ALTER SEQUENCE office_room_seq RESTART WITH 1").executeUpdate();

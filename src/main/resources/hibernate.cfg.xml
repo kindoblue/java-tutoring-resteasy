@@ -12,6 +12,8 @@
         
         <!-- Connection pool settings -->
         <property name="hibernate.connection.pool_size">20</property>
+        <property name="hibernate.connection.release_mode">after_transaction</property>
+        <property name="hibernate.connection.handling_mode">DELAYED_ACQUISITION_AND_RELEASE_AFTER_TRANSACTION</property>
         
         <!-- SQL dialect -->
         <property name="hibernate.dialect">org.hibernate.dialect.PostgreSQLDialect</property>

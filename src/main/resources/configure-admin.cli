@@ -1,15 +1,18 @@
 batch
 
 # Add admin user with admin group
-/core-service=management/security-realm=ManagementRealm/authentication=local:add(default-user=admin)
-/core-service=management/security-realm=ManagementRealm/authentication=properties:add
-/core-service=management/security-realm=ManagementRealm/authentication=properties:write-attribute(name=path,value=mgmt-users.properties)
-/core-service=management/security-realm=ManagementRealm/authentication=properties:write-attribute(name=relative-to,value=jboss.server.config.dir)
+/core-service=management/access=authorization:write-attribute(name=provider,value=simple)
+/core-service=management/access=authorization/role-mapping=SuperUser:add()
+/core-service=management/access=authorization/role-mapping=SuperUser/include=admin:add(name=admin,type=USER)
 
-# Add user with password using add-user utility
-/core-service=management/access=authorization:write-attribute(name=provider, value=simple)
-/core-service=management/access=authorization/role-mapping=Administrator:add
-/core-service=management/access=authorization/role-mapping=Administrator/include=user-admin:add(name=admin,type=USER)
+# Add admin user with password
+/core-service=management/security-realm=ManagementRealm/server-identity=secret:add(value="YWRtaW4xMjM=")
+/core-service=management/management-interface=http-interface:write-attribute(name=security-realm,value=ManagementRealm)
+
+# Add admin user credentials
+/core-service=management/security-realm=ManagementRealm:add()
+/core-service=management/security-realm=ManagementRealm/authentication=local:add(default-user=admin)
+/core-service=management/security-realm=ManagementRealm/authentication=properties:add(path=mgmt-users.properties,relative-to=jboss.server.config.dir)
 
 run-batch
 

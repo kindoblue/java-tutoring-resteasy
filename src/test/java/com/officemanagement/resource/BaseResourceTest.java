@@ -71,10 +71,11 @@ public abstract class BaseResourceTest {
 
                     // Start Undertow JAX-RS server
                     server = new UndertowJaxrsServer();
-                    server.start(Undertow.builder().addHttpListener(PORT, "localhost"));
+                    server.start(Undertow.builder()
+                        .addHttpListener(PORT, "localhost"));
                     
                     // Deploy application
-                    server.deploy(TestApplication.class);
+                    server.deploy(TestApplication.class, "/");
                     
                     logger.info("Undertow server started on port: {}", PORT);
 

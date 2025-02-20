@@ -11,7 +11,7 @@
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
-        <resteasy.version>3.6.3.Final</resteasy.version>
+        <resteasy.version>4.7.7.Final</resteasy.version>
         <hibernate.version>5.3.20.Final</hibernate.version>
         <jackson.version>2.12.7</jackson.version>
         <undertow.version>2.2.19.Final</undertow.version>
@@ -32,19 +32,30 @@
         <!-- RESTEasy -->
         <dependency>
             <groupId>org.jboss.resteasy</groupId>
-            <artifactId>resteasy-servlet-initializer</artifactId>
+            <artifactId>resteasy-core</artifactId>
             <version>${resteasy.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.resteasy</groupId>
+            <artifactId>resteasy-core-spi</artifactId>
+            <version>${resteasy.version}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.jboss.resteasy</groupId>
             <artifactId>resteasy-jackson2-provider</artifactId>
             <version>${resteasy.version}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.jboss.resteasy</groupId>
-            <artifactId>resteasy-jaxrs</artifactId>
+            <artifactId>resteasy-servlet-initializer</artifactId>
             <version>${resteasy.version}</version>
+            <scope>provided</scope>
         </dependency>
+
+        <!-- Test Dependencies -->
         <dependency>
             <groupId>org.jboss.resteasy</groupId>
             <artifactId>resteasy-undertow</artifactId>
@@ -188,73 +199,71 @@
     </dependencies>
 
     <build>
+        <finalName>ROOT</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-war-plugin</artifactId>
                 <version>3.3.2</version>
+                <configuration>
+                    <warName>ROOT</warName>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.2.5</version>
             </plugin>
-            <plugin>
-                <groupId>org.wildfly.plugins</groupId>
-                <artifactId>wildfly-maven-plugin</artifactId>
-                <version>5.1.2.Final</version>
-                <configuration>
-                    <feature-packs>
-                        <feature-pack>
-                            <location>org.wildfly:wildfly-galleon-pack:${wildfly.version}</location>
-                        </feature-pack>
-                    </feature-packs>
-                    <layers>
-                        <layer>jaxrs-server</layer>
-                        <layer>datasources-web-server</layer>
-                    </layers>
-                    <javaOpts>
-                        <javaOpt>-Djboss.socket.binding.port-offset=100</javaOpt>
-                    </javaOpts>
-                    <startupTimeout>360</startupTimeout>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>start-server</id>
-                        <phase>pre-integration-test</phase>
-                        <goals>
-                            <goal>start</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>configure-server</id>
-                        <phase>pre-integration-test</phase>
-                        <goals>
-                            <goal>execute-commands</goal>
-                        </goals>
-                        <configuration>
-                            <scripts>
-                                <script>src/main/resources/configure-admin.cli</script>
-                                <script>src/main/resources/configure-datasource.cli</script>
-                            </scripts>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>deploy-app</id>
-                        <phase>pre-integration-test</phase>
-                        <goals>
-                            <goal>deploy</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>stop-server</id>
-                        <phase>post-integration-test</phase>
-                        <goals>
-                            <goal>shutdown</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>wildfly</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.wildfly.plugins</groupId>
+                        <artifactId>wildfly-maven-plugin</artifactId>
+                        <version>5.1.2.Final</version>
+                        <configuration>
+                            <feature-packs>
+                                <feature-pack>
+                                    <location>org.wildfly:wildfly-galleon-pack:${wildfly.version}</location>
+                                </feature-pack>
+                            </feature-packs>
+                            <layers>
+                                <layer>jaxrs-server</layer>
+                                <layer>datasources-web-server</layer>
+                            </layers>
+                            <javaOpts>
+                                <javaOpt>-Djboss.socket.binding.port-offset=100</javaOpt>
+                                <javaOpt>-Djboss.bind.address=0.0.0.0</javaOpt>
+                                <javaOpt>-Djboss.bind.address.management=0.0.0.0</javaOpt>
+                            </javaOpts>
+                            <startupTimeout>360</startupTimeout>
+                            <port>10090</port>
+                            <hostname>0.0.0.0</hostname>
+                            <scripts>
+                                <script>src/main/resources/configure-admin.cli</script>
+                            </scripts>
+                            <properties>
+                                <jboss.server.config.dir>${project.build.directory}/server/standalone/configuration</jboss.server.config.dir>
+                            </properties>
+                            <resources>
+                                <resource>
+                                    <source>src/main/resources/mgmt-users.properties</source>
+                                    <target>standalone/configuration/mgmt-users.properties</target>
+                                </resource>
+                            </resources>
+                            <add-deployment>
+                                <content>${project.build.directory}/ROOT.war</content>
+                                <runtime-name>ROOT.war</runtime-name>
+                            </add-deployment>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

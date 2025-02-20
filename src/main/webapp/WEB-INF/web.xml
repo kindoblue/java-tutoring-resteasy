@@ -14,7 +14,16 @@
             <param-name>javax.ws.rs.Application</param-name>
             <param-value>com.officemanagement.OfficeManagementApplication</param-value>
         </init-param>
+        <init-param>
+            <param-name>resteasy.preferJacksonOverJsonB</param-name>
+            <param-value>true</param-value>
+        </init-param>
+        <init-param>
+            <param-name>resteasy.servlet.mapping.prefix</param-name>
+            <param-value>/api</param-value>
+        </init-param>
         <load-on-startup>1</load-on-startup>
+        <async-supported>true</async-supported>
     </servlet>
 
     <servlet-mapping>

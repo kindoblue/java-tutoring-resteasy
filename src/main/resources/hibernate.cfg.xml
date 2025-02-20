@@ -4,8 +4,14 @@
         "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
 <hibernate-configuration>
     <session-factory>
-        <!-- Use WildFly's datasource -->
-        <property name="hibernate.connection.datasource">java:jboss/datasources/OfficeManagementDS</property>
+        <!-- Database connection settings -->
+        <property name="hibernate.connection.driver_class">org.postgresql.Driver</property>
+        <property name="hibernate.connection.url">jdbc:postgresql://localhost:5432/office_management</property>
+        <property name="hibernate.connection.username">postgres</property>
+        <property name="hibernate.connection.password">postgres</property>
+        
+        <!-- Connection pool settings -->
+        <property name="hibernate.connection.pool_size">20</property>
         
         <!-- SQL dialect -->
         <property name="hibernate.dialect">org.hibernate.dialect.PostgreSQLDialect</property>

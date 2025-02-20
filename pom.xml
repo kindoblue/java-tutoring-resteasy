@@ -214,56 +214,40 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.2.5</version>
             </plugin>
+            <plugin>
+                <groupId>org.codehaus.cargo</groupId>
+                <artifactId>cargo-maven3-plugin</artifactId>
+                <version>1.10.11</version>
+                <configuration>
+                    <container>
+                        <containerId>wildfly26x</containerId>
+                        <artifactInstaller>
+                            <groupId>org.wildfly</groupId>
+                            <artifactId>wildfly-dist</artifactId>
+                            <version>${wildfly.version}</version>
+                        </artifactInstaller>
+                    </container>
+                    <configuration>
+                        <properties>
+                            <cargo.servlet.port>8080</cargo.servlet.port>
+                            <cargo.jboss.management-http.port>9990</cargo.jboss.management-http.port>
+                            <cargo.hostname>0.0.0.0</cargo.hostname>
+                            <cargo.jboss.configuration>standalone</cargo.jboss.configuration>
+                            <cargo.jvmargs>-Xms512m -Xmx2048m</cargo.jvmargs>
+                        </properties>
+                    </configuration>
+                    <deployables>
+                        <deployable>
+                            <groupId>${project.groupId}</groupId>
+                            <artifactId>${project.artifactId}</artifactId>
+                            <type>war</type>
+                            <properties>
+                                <context>/</context>
+                            </properties>
+                        </deployable>
+                    </deployables>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
-
-    <profiles>
-        <profile>
-            <id>wildfly</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.wildfly.plugins</groupId>
-                        <artifactId>wildfly-maven-plugin</artifactId>
-                        <version>5.1.2.Final</version>
-                        <configuration>
-                            <feature-packs>
-                                <feature-pack>
-                                    <location>org.wildfly:wildfly-galleon-pack:${wildfly.version}</location>
-                                </feature-pack>
-                            </feature-packs>
-                            <layers>
-                                <layer>jaxrs-server</layer>
-                                <layer>datasources-web-server</layer>
-                            </layers>
-                            <javaOpts>
-                                <javaOpt>-Djboss.socket.binding.port-offset=100</javaOpt>
-                                <javaOpt>-Djboss.bind.address=0.0.0.0</javaOpt>
-                                <javaOpt>-Djboss.bind.address.management=0.0.0.0</javaOpt>
-                            </javaOpts>
-                            <startupTimeout>360</startupTimeout>
-                            <port>10090</port>
-                            <hostname>0.0.0.0</hostname>
-                            <scripts>
-                                <script>src/main/resources/configure-admin.cli</script>
-                            </scripts>
-                            <properties>
-                                <jboss.server.config.dir>${project.build.directory}/server/standalone/configuration</jboss.server.config.dir>
-                            </properties>
-                            <resources>
-                                <resource>
-                                    <source>src/main/resources/mgmt-users.properties</source>
-                                    <target>standalone/configuration/mgmt-users.properties</target>
-                                </resource>
-                            </resources>
-                            <add-deployment>
-                                <content>${project.build.directory}/ROOT.war</content>
-                                <runtime-name>ROOT.war</runtime-name>
-                            </add-deployment>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 </project>
